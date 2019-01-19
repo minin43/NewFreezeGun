@@ -1,4 +1,4 @@
---// A lot of the gun shit I ripped right from the freeze gun, since it suited my purposes quite nicely
+--// A lot of the gun shit I ripped right from the flare gun, since it suited my purposes quite nicely
 AddCSLuaFile()
 
 SWEP.HoldType              = "pistol"
@@ -11,8 +11,8 @@ if CLIENT then
    SWEP.ViewModelFlip      = false
 
    SWEP.EquipMenuData = {
-      type = "a",
-      desc = "Shoot a terrorist to freeze their screen.\nRandomly plays one of three overlays."
+      type = "Weapon",
+      desc = "Shoot a terrorist to freeze their movement.\nRandomly plays one of four overlays,\nif any are enabled."
    };
 
    SWEP.Icon               = "vgui/ttt/" --vgui/ttt/icon_flare
@@ -20,11 +20,9 @@ end
 
 SWEP.Base                  = "weapon_tttbase"
 
--- if I run out of ammo types, this weapon is one I could move to a custom ammo
--- handling strategy, because you never need to pick up ammo for it
 SWEP.Primary.Ammo          = "AR2AltFire"
 SWEP.Primary.Recoil        = 2
-SWEP.Primary.Damage        = 1
+SWEP.Primary.Damage        = 5
 SWEP.Primary.Delay         = 1.0
 SWEP.Primary.Cone          = 0.01
 SWEP.Primary.ClipSize      = 3
@@ -34,9 +32,8 @@ SWEP.Primary.ClipMax       = 3
 SWEP.Primary.Sound         = Sound( "Weapon_USP.SilencedShot" )
 
 SWEP.Kind                  = WEAPON_EQUIP
-SWEP.CanBuy                = {ROLE_TRAITOR, ROLE_DETECTIVE} -- only traitors can buy
-SWEP.LimitedStock          = false -- only buyable once
---SWEP.WeaponID              = AMMO_FLARE
+SWEP.CanBuy                = {ROLE_TRAITOR, ROLE_DETECTIVE}
+SWEP.LimitedStock          = false
 
 SWEP.Tracer                = "AR2Tracer"
 
@@ -57,13 +54,18 @@ function FreezeTarget( att, path, dmginfo )
             ent:Freeze( true )
 
             local function UnFreeze( ply )
+                print("Fuction UnFreeze called")
                 ply:Freeze( false )
                 ply:SetDSP( 0, false )
                 net.Start( "EndScreen" )
                 net.Send( ply )
+                ply:EmitSound( "effects/IceShatter.ogg")
             end
 
-            timer.Simple( GetConVar( "FreezeGunTime" ):GetInt(), UnFreeze( ent ) ) --TO TEST "UnFreeze( ent )" function syntax
+            timer.Simple( GetConVar( "LFG_FreezeGunTime" ):GetInt(), function()
+                print("End of Freeze Timer called for ", ent)
+                UnFreeze( ent ) 
+            end )
 
             if GetConVar( "LFG_EnableDynamicFreezing" ):GetInt() == 1 then
                 local ConVarTable = {}
@@ -83,12 +85,13 @@ function FreezeTarget( att, path, dmginfo )
                 net.Start( "SendScreenInteractive" )
                 savedRandomNumber = math.random( -254, 254 )
                 net.WriteInt( savedRandomNumber, 9 ) --Used as verification
-                net.Writestring( ConVarTable[ math.random( #ConVarTable ) ] ) --Random overlay to use
+                net.WriteString( ConVarTable[ math.random( #ConVarTable ) ] ) --Random overlay to use
             else
                 net.Start( "SendScreen" )
                 ent:SetDSP( 4, false )
             end
             net.Send( ent )
+            ent:EmitSound( "effects/IceOver.ogg" )
 
             net.Receive( "SendScreenInteractiveCallback", function( len, ply )
                 local test = net.ReadInt( 9 )
@@ -133,6 +136,8 @@ function SWEP:PrimaryAttack()
    if ( (game.SinglePlayer() && SERVER) || CLIENT ) then
       self:SetNWFloat( "LastShootTime", CurTime() )
    end
+
+   self:ShootFreeze()
 end
 
 function SWEP:SecondaryAttack()

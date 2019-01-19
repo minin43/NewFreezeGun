@@ -11,8 +11,8 @@ if SERVER then
     CreateConVar( "LFG_EnableOSUpdateOverlay", 1, { FCVAR_ARCHIVE }, "If set to 1, enables the interactive OS update overlay" )
     CreateConVar( "LFG_EnableOSCrashOverlay", 1, { FCVAR_ARCHIVE }, "If set to 1, enables the interactive OS crash overlay" )
     CreateConVar( "LFG_EnableGameCrashOverlay", 1, { FCVAR_ARCHIVE }, "If set to 1, enables the interactive game crash overlay" )
-    CreateConVar( "LFG_EnableDynamicFreezing", 1, { FCVAR_ARCHIVE }, "If set to 1, enables the interactive freezing,
-        interactive freezing allows the victim to interact with some puzzle in order to escape being frozen sooner" )
+    CreateConVar( "LFG_EnableDynamicFreezing", 0, { FCVAR_ARCHIVE }, "If set to 1, enables the interactive freezing,"
+        .. " interactive freezing allows the victim to interact with some puzzle in order to escape being frozen sooner" )
     CreateConVar( "LFG_FreezeGunTime", 5, { FCVAR_ARCHIVE }, "How long the frozen player remains unable to move" )
 
 end
@@ -29,7 +29,7 @@ if CLIENT then
             --say something here about being lame
             DefaultOverlay()
         elseif overlayType == "LFG_EnableIceOverlay" then --Ice overlay
-                IceInteractiveOverlay()
+            IceInteractiveOverlay()
         elseif overlayType == "LFG_EnableOSUpdateOverlay" then
             OSUpdateInteractiveOverlay()
         elseif overlayType == "LFG_EnableOSCrashOverlay" then
@@ -44,7 +44,9 @@ if CLIENT then
 
     net.Receive( "SendScreen", DefaultOverlay )
 
-    net.Receive( "EndScreen", CloseOverlay ) --All this should do is close the screen, everything else should be done for us
+    net.Receive( "EndScreen", function() --All this should do is close the screen, everything else should be done for us
+        CloseOverlay()
+    end  )
 
     function MuteThem()
         for k, v in pairs( player.GetAll() ) do
@@ -61,6 +63,7 @@ if CLIENT then
     end
 
     function DefaultOverlay()
+        if ispanel( Screen ) and IsValid( Screen ) then return end
         Screen = vgui.Create( "DFrame" )
         Screen:SetSize( ScrW(), ScrH() )
         Screen:SetPos( 0, 0 )
@@ -68,21 +71,24 @@ if CLIENT then
         Screen:SetVisible( true )
         Screen:SetDraggable( false )
         Screen:ShowCloseButton( false )
-        Derma_DrawBackgroundBlur( Screen, CurTime() ) --Is this desired?
+        Screen.Paint = function()
+        end
 
-        local IceOverlay = Material( "" ) --Smooth 1
+        local IceOverlay = Material( "ui/frosted.png" ) --Smooth 1
         overlayPanel = vgui.Create( "DPanel", Screen )
         overlayPanel:SetSize( Screen:GetWide(), Screen:GetTall() )
         overlayPanel:SetPos( 0, 0 )
         overlayPanel.Paint = function()
-            --Draw icy screen overlay here
+            overlayPanel.alphaCounter = overlayPanel.alphaCounter or 0
+            if overlayPanel.alphaCounter <= 254 then overlayPanel.alphaCounter = overlayPanel.alphaCounter + 1 end
+            surface.SetDrawColor( 255, 255, 255, overlayPanel.alphaCounter )
             surface.SetMaterial( IceOverlay )
             surface.DrawTexturedRect( 0, 0, overlayPanel:GetWide(), overlayPanel:GetTall() )
         end
     end
 
     function CloseOverlay()
-        Screen:Close()
+        if Screen and ispanel( Screen ) then Screen:Remove() end
         UnMuteThem()
     end
 
@@ -105,7 +111,7 @@ if CLIENT then
         Screen:MakePopup()
         Derma_DrawBackgroundBlur( Screen, CurTime() ) --Is this desired?
 
-        local IceOverlay = Material( "" ) --Smooth 1
+        local IceOverlay = Material( "ui/frosted.png" ) --Smooth 1
         overlayPanel = vgui.Create( "DPanel", Screen )
         overlayPanel:SetSize( Screen:GetWide(), Screen:GetTall() )
         overlayPanel:SetPos( 0, 0 )
