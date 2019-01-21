@@ -64,6 +64,8 @@ if CLIENT then
 
     function DefaultOverlay()
         if ispanel( Screen ) and IsValid( Screen ) then return end
+        LocalPlayer():SetDSP( 4, false )
+
         Screen = vgui.Create( "DFrame" )
         Screen:SetSize( ScrW(), ScrH() )
         Screen:SetPos( 0, 0 )
@@ -99,6 +101,7 @@ if CLIENT then
     end
 
     function IceInteractiveOverlay()
+        if ispanel( Screen ) and IsValid( Screen ) then return end
         LocalPlayer():SetDSP( 4, false )
 
         Screen = vgui.Create( "DFrame" )
@@ -109,14 +112,17 @@ if CLIENT then
         Screen:SetDraggable( false )
         Screen:ShowCloseButton( false )
         Screen:MakePopup()
-        Derma_DrawBackgroundBlur( Screen, CurTime() ) --Is this desired?
+        Screen.Paint = function()
+        end
 
         local IceOverlay = Material( "ui/frosted.png" ) --Smooth 1
         overlayPanel = vgui.Create( "DPanel", Screen )
         overlayPanel:SetSize( Screen:GetWide(), Screen:GetTall() )
         overlayPanel:SetPos( 0, 0 )
         overlayPanel.Paint = function()
-            --Draw icy screen overlay here
+            overlayPanel.alphaCounter = overlayPanel.alphaCounter or 0
+            if overlayPanel.alphaCounter <= 254 then overlayPanel.alphaCounter = overlayPanel.alphaCounter + 1 end
+            surface.SetDrawColor( 255, 255, 255, overlayPanel.alphaCounter )
             surface.SetMaterial( IceOverlay )
             surface.DrawTexturedRect( 0, 0, overlayPanel:GetWide(), overlayPanel:GetTall() )
         end
