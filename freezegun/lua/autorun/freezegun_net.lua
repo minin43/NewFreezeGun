@@ -46,6 +46,14 @@ end
 if CLIENT then
     local Screen, savedInt
 
+    surface.CreateFont( "Windows10Font", {
+        font = "Segoe UI",
+        extended = true, --dunno
+        size = 13, --default
+        weight = 500, --default
+        antialias = true --default
+    } )
+
     net.Receive( "SendScreenInteractive", function()
         savedInt = net.ReadInt( 9 )
         local overlayType = net.ReadString()
@@ -61,7 +69,7 @@ if CLIENT then
         elseif overlayType == "LFG_EnableOSCrashOverlay" then
             OSCrashInteractiveOverlay()
         elseif overlayType == "LFG_EnableGameCrashOverlay" then
-            GameCrashInteractiveOverlay()
+            CaptureScreenForGameCrashOverlay() --Runs a bit unique here
         else
             DefaultOverlay()
         end
@@ -89,7 +97,7 @@ if CLIENT then
     end
 
     function DefaultOverlay()
-        if ispanel( Screen ) and IsValid( Screen ) then return end
+        if IsValid( Screen ) and ispanel( Screen ) then return end
         timer.Simple( 2, function() LocalPlayer():SetDSP( 14, false ) end )
 
         Screen = vgui.Create( "DFrame" )
@@ -127,7 +135,7 @@ if CLIENT then
     end
 
     function IceInteractiveOverlay()
-        if ispanel( Screen ) and IsValid( Screen ) then return end
+        if IsValid( Screen ) and ispanel( Screen ) then return end
         timer.Simple( 2, function() LocalPlayer():SetDSP( 14, false ) end )
 
         Screen = vgui.Create( "DFrame" )
@@ -155,7 +163,6 @@ if CLIENT then
     end
 
     function OSUpdateInteractiveOverlay()
-        --No screen effect except a small window at the bottom of the screen asking for windows to update to, must click through multiple windows
         Screen = vgui.Create( "DFrame" )
         Screen:SetSize( ScrW(), ScrH() )
         Screen:SetPos( 0, 0 )
@@ -164,23 +171,140 @@ if CLIENT then
         Screen:SetDraggable( false )
         Screen:ShowCloseButton( false )
         Screen:MakePopup()
-        Derma_DrawBackgroundBlur( Screen, CurTime() ) --Is this desired?
         
+        local UpdateImage, FooledYou = Material( "ui/windows10update.png" ), false
         overlayPanel = vgui.Create( "DPanel", Screen )
         overlayPanel:SetSize( Screen:GetWide(), Screen:GetTall() )
         overlayPanel:SetPos( 0, 0 )
         overlayPanel.Paint = function()
-            --Make a Windows update screen here
+            surface.SetDrawColor( 255, 255, 255 )
+            surface.SetMaterial( UpdateImage )
+            surface.DrawTexturedRect( 0, 0, overlayPanel:GetWide(), overlayPanel:GetTall() )
+        end
+
+        local function FooledYou()
+            local failedImage = Material( "" )
+            local failedPanel = vgui.Create( "DPanel", overlayPanel )
+            failedPanel:SetPos( 0, 0 )
+            failedPanel:SetSize( overlayPanel:GetWide(), overlayPanel:GetTall() )
+            failedPanel.Paint = function()
+                surface.SetDrawColor( 255, 255, 255 )
+                --surface.SetMaterial( failedImage )
+                --surface.DrawTexturedRect( 0, 0, failedPanel:GetWide(), failedPanel:GetTall() )
+                surface.SetDrawColor( ) --Need the windows 10 blue RGB
+                surface.DrawRect( 0, 0, failedPanel:GetWide(), failedPanel:GetTall() )
+                draw.DrawText( "Fooled you.", "Windows10Font", failedPanel:GetWide() / 2, failedPanel:GetTall() / 2, Color( 255, 255, 255 ), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER )
+            end
+        end
+
+        local buttonImage1 = Material( "" )
+        fakeButton1 = vgui.Create( "DButton", overlayPanel )
+        fakeButton1:SetPos()
+        fakeButton1:SetSize()
+        fakeButton1:SetText( "" )
+        fakeButton1.Paint = function()
+            surface.SetDrawColor( 255, 255, 255 )
+            surface.SetMaterial( buttonImage1 )
+            surface.DrawTexturedRect( 0, 0, fakeButton1:GetWide(), fakeButton1:GetTall() )
+        end
+        fakeButton1.DoClick = function()
+            FooledYou()
+        end
+
+        local buttonImage2 = Material( "" )
+        fakeButton2 = vgui.Create( "DButton", overlayPanel )
+        fakeButton2:SetPos()
+        fakeButton2:SetSize()
+        fakeButton2:SetText( "" )
+        fakeButton2.Paint = function()
+            surface.SetDrawColor( 255, 255, 255 )
+            surface.SetMaterial( buttonImage2 )
+            surface.DrawTexturedRect( 0, 0, fakeButton2:GetWide(), fakeButton2:GetTall() )
+        end
+        fakeButton2.DoClick = function()
+            FooledYou()
+        end
+
+        local buttonImage3 = Material( "" )
+        realButton = vgui.Create( "DButton", overlayPanel )
+        realButton:SetPos()
+        realButton:SetSize()
+        realButton:SetText( "" )
+        realButton.Paint = function()
+            surface.SetDrawColor( 255, 255, 255 )
+            surface.SetMaterial( buttonImage3 )
+            surface.DrawTexturedRect( 0, 0, realButton:GetWide(), realButton:GetTall() )
+        end
+        realButton.DoClick = function()
+
         end
     end
 
     function OSCrashInteractiveOverlay()
+        if IsValid( Screen ) and ispanel( Screen ) then return end
         MuteThem()
         --Blue screen text-based minigame
     end
 
-    function GameCrashInteractiveOverlay()
-        MuteThem()
-        --Game freezes, have to time space bar presses with the green bar crossing a line, gets continually harder as you succeed
+    function CaptureScreenForGameCrashOverlay()
+        if IsValid( Screen ) and ispanel( Screen ) then return end
+        RequestedScreenshot = true
     end
+
+    function GameCrashInteractiveOverlay()
+        --if IsValid( Screen ) and ispanel( Screen ) then return end --Called in CaptureScreenForGameCrashOverlay function
+        MuteThem()
+
+        Screen = vgui.Create( "DFrame" )
+        Screen:SetSize( ScrW(), ScrH() )
+        Screen:SetPos( 0, 0 )
+        Screen:SetTitle( "" )
+        Screen:SetVisible( true )
+        Screen:SetDraggable( false )
+        Screen:ShowCloseButton( false )
+        
+        local Screenshot = Material( "LoganTempPic.jpg" ) --Should exist at this point
+        overlayPanel = vgui.Create( "DPanel", Screen )
+        overlayPanel:SetSize( Screen:GetWide(), Screen:GetTall() )
+        overlayPanel:SetPos( 0, 0 )
+        overlayPanel.Paint = function()
+            surface.SetDrawColor( 255, 255, 255 )
+            surface.SetMaterial( Screenshot )
+            surface.DrawTexturedRect( 0, 0, overlayPanel:GetWide(), overlayPanel:GetTall() )
+        end
+
+        local CrashImage = Material( "" )
+        crashPanel = vgui.Create( "DPanel", overlayPanel ) --Do we want to be using overlayPanel here? Or Screen? We need the background blur
+        crashPanel:SetSize()
+        crashPanel:Center()
+        crashPanel.Paint = function()
+            surface.SetDrawColor( 255, 255, 255 )
+            surface.SetMaterial( CrashImage )
+            surface.DrawTexturedRect( 0, 0, crashPanel:GetWide(), crashPanel:GetTall() )
+        end
+        Derma_DrawBackgroundBlur( crashPanel, CurTime() ) --Is this desired? Might work better around Screen
+    end
+
+    hook.Add( "PostRender", "CaptureScreenshot", function() --Nabbed from the wiki
+        if RequestedScreenshot != true then return end
+        RequestedScreenshot = false
+
+        local data = render.Capture( {
+            format = "jpeg",
+            quality = 100, --Max is 100
+            h = ScrH(),
+            w = ScrW(),
+            x = 0,
+            y = 0,
+        } )
+        local tempPic = file.Open( "materials/LoganTempPic.jpg", "wb", "GAME" )
+        tempPic:Write( data )
+        tempPic:Close()
+
+        timer.Simple( 0, function()
+            if file.Exists( "materials/LoganTempPic.jpg", "GAME" ) then
+                GameCrashInteractiveOverlay()
+            end
+        end )
+    end )
 end
