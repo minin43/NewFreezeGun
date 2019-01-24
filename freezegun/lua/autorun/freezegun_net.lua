@@ -13,7 +13,33 @@ if SERVER then
     CreateConVar( "LFG_EnableGameCrashOverlay", 1, { FCVAR_ARCHIVE }, "If set to 1, enables the interactive game crash overlay" )
     CreateConVar( "LFG_EnableDynamicFreezing", 0, { FCVAR_ARCHIVE }, "If set to 1, enables the interactive freezing,"
         .. " interactive freezing allows the victim to interact with some puzzle in order to escape being frozen sooner" )
-    CreateConVar( "LFG_FreezeGunTime", 5, { FCVAR_ARCHIVE }, "How long the frozen player remains unable to move" )
+    CreateConVar( "LFG_FreezeGunTime", 6, { FCVAR_ARCHIVE }, "How long the frozen player remains unable to move" )
+
+    hook.Add( "DoPlayerDeath", "KilledWhileFrozen", function( vic )
+        if vic:IsFlagSet( FL_FROZEN ) then
+            vic:Freeze( false )
+            vic:SetDSP( 0, false )
+            vic:EmitSound( "effects/UnfreezeKilled.wav")
+            vic:SetMaterial( "" ) --Leave blank to reset the material
+
+            net.Start( "EndScreen" )
+            net.Send( vic )
+
+            local data = EffectData()
+            data:SetOrigin( vic:GetPos() + Vector( 0, 0, 40 ) )
+            local scale = 4 + math.Rand( -0.25, 1.25 )
+            local phys = vic:GetPhysicsObject()
+            if IsValid( phys ) then
+                scale = scale + phys:GetMass() * 0.001
+            end
+            data:SetScale( scale )
+            data:SetMagnitude( 10 )
+            util.Effect( "GlassImpact", data, true, true )
+
+            local toDelete = vic:GetRagdollEntity()
+            if toDelete then toDelete:Remove() end
+        end
+    end )
 
 end
 
@@ -64,7 +90,7 @@ if CLIENT then
 
     function DefaultOverlay()
         if ispanel( Screen ) and IsValid( Screen ) then return end
-        LocalPlayer():SetDSP( 4, false )
+        timer.Simple( 2, function() LocalPlayer():SetDSP( 14, false ) end )
 
         Screen = vgui.Create( "DFrame" )
         Screen:SetSize( ScrW(), ScrH() )
@@ -82,7 +108,7 @@ if CLIENT then
         overlayPanel:SetPos( 0, 0 )
         overlayPanel.Paint = function()
             overlayPanel.alphaCounter = overlayPanel.alphaCounter or 0
-            if overlayPanel.alphaCounter <= 254 then overlayPanel.alphaCounter = overlayPanel.alphaCounter + 1 end
+            if overlayPanel.alphaCounter <= 254 then overlayPanel.alphaCounter = overlayPanel.alphaCounter + 0.5 end
             surface.SetDrawColor( 255, 255, 255, overlayPanel.alphaCounter )
             surface.SetMaterial( IceOverlay )
             surface.DrawTexturedRect( 0, 0, overlayPanel:GetWide(), overlayPanel:GetTall() )
@@ -102,7 +128,7 @@ if CLIENT then
 
     function IceInteractiveOverlay()
         if ispanel( Screen ) and IsValid( Screen ) then return end
-        LocalPlayer():SetDSP( 4, false )
+        timer.Simple( 2, function() LocalPlayer():SetDSP( 14, false ) end )
 
         Screen = vgui.Create( "DFrame" )
         Screen:SetSize( ScrW(), ScrH() )

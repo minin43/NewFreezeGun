@@ -12,7 +12,7 @@ if CLIENT then
 
    SWEP.EquipMenuData = {
       type = "Weapon",
-      desc = "Shoot a terrorist to freeze their movement.\nRandomly plays one of four overlays,\nif any are enabled."
+      desc = "Shoot a terrorist to freeze their movement.\nKill them before they unfreeze,\nand they leave no corpse."
    };
 
    SWEP.Icon               = "vgui/ttt/" --vgui/ttt/icon_flare
@@ -51,19 +51,21 @@ function FreezeTarget( att, path, dmginfo )
 
         if ent:IsPlayer() then
             local savedRandomNumber
+
             ent:Freeze( true )
+            ent:SetMaterial( "models/frozen_player/freeze_overlayeffect01" )
 
             local function UnFreeze( ply )
-                print("Fuction UnFreeze called")
+                if !ply:Alive() and !ply:IsFlagSet( FL_FROZEN ) then return end --We're assuming the player isn't dead when we run this
                 ply:Freeze( false )
                 ply:SetDSP( 0, false )
+                ply:EmitSound( "effects/UnfreezeLived.wav")
+                ply:SetMaterial( "" ) --Leave blank to reset the material
                 net.Start( "EndScreen" )
                 net.Send( ply )
-                ply:EmitSound( "effects/IceShatter.ogg")
             end
 
             timer.Simple( GetConVar( "LFG_FreezeGunTime" ):GetInt(), function()
-                print("End of Freeze Timer called for ", ent)
                 UnFreeze( ent ) 
             end )
 
@@ -88,10 +90,10 @@ function FreezeTarget( att, path, dmginfo )
                 net.WriteString( ConVarTable[ math.random( #ConVarTable ) ] ) --Random overlay to use
             else
                 net.Start( "SendScreen" )
-                ent:SetDSP( 4, false )
+                timer.Simple( 2, function() ent:SetDSP( 14, false ) end )
             end
             net.Send( ent )
-            ent:EmitSound( "effects/IceOver.ogg" )
+            ent:EmitSound( "effects/FreezeOver.wav" )
 
             net.Receive( "SendScreenInteractiveCallback", function( len, ply )
                 local test = net.ReadInt( 9 )
