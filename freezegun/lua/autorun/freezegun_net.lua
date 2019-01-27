@@ -1,18 +1,13 @@
 if SERVER then
+    if engine.ActiveGamemode != null and engine.ActiveGamemode != terrortown then return end
 
     util.AddNetworkString( "SendScreen" )
-    --util.AddNetworkString( "SendScreenCallback" )
-    util.AddNetworkString( "SendScreenInteractive" )
-    util.AddNetworkString( "SendScreenInteractiveCallback" )
     util.AddNetworkString( "EndScreen" )
-    --util.AddNetworkString( "EndScreenCallback" )
 
-    CreateConVar( "LFG_EnableIceOverlay", 1, { FCVAR_ARCHIVE }, "If set to 1, enables the interactive ice-over overlay" )
-    CreateConVar( "LFG_EnableOSUpdateOverlay", 1, { FCVAR_ARCHIVE }, "If set to 1, enables the interactive OS update overlay" )
-    CreateConVar( "LFG_EnableOSCrashOverlay", 1, { FCVAR_ARCHIVE }, "If set to 1, enables the interactive OS crash overlay" )
-    CreateConVar( "LFG_EnableGameCrashOverlay", 1, { FCVAR_ARCHIVE }, "If set to 1, enables the interactive game crash overlay" )
-    CreateConVar( "LFG_EnableDynamicFreezing", 0, { FCVAR_ARCHIVE }, "If set to 1, enables the interactive freezing,"
-        .. " interactive freezing allows the victim to interact with some puzzle in order to escape being frozen sooner" )
+    CreateConVar( "LFG_EnableIceOverlay", 1, { FCVAR_ARCHIVE }, "If set to 1, enables the ice-over overlay" )
+    CreateConVar( "LFG_EnableOSUpdateOverlay", 1, { FCVAR_ARCHIVE }, "If set to 1, enables the OS update overlay" )
+    CreateConVar( "LFG_EnableOSCrashOverlay", 1, { FCVAR_ARCHIVE }, "If set to 1, enables the OS crash overlay" )
+    CreateConVar( "LFG_EnableGameCrashOverlay", 1, { FCVAR_ARCHIVE }, "If set to 1, enables the game crash overlay" )
     CreateConVar( "LFG_FreezeGunTime", 6, { FCVAR_ARCHIVE }, "How long the frozen player remains unable to move" )
 
     hook.Add( "DoPlayerDeath", "KilledWhileFrozen", function( vic )
@@ -44,7 +39,7 @@ if SERVER then
 end
 
 if CLIENT then
-    local Screen, savedInt
+    local Screen, savedInt, RequestedScreenshot, PreventSounds
 
     surface.CreateFont( "Windows10Font", {
         font = "Segoe UI",
@@ -54,20 +49,19 @@ if CLIENT then
         antialias = true --default
     } )
 
-    net.Receive( "SendScreenInteractive", function()
-        savedInt = net.ReadInt( 9 )
+    net.Receive( "SendScreen", function()
         local overlayType = net.ReadString()
 
         --Ugly-ass if statement, but necessary since I have additional functionality dependent on the option
         if system.IsLinux or system.IsOSX then
             --say something here about being lame
             DefaultOverlay()
-        elseif overlayType == "LFG_EnableIceOverlay" then --Ice overlay
-            IceInteractiveOverlay()
+        elseif overlayType == "LFG_EnableIceOverlay" then 
+            DefaultOverlay()
         elseif overlayType == "LFG_EnableOSUpdateOverlay" then
-            OSUpdateInteractiveOverlay()
+            OSUpdateOverlay()
         elseif overlayType == "LFG_EnableOSCrashOverlay" then
-            OSCrashInteractiveOverlay()
+            OSCrashOverlay()
         elseif overlayType == "LFG_EnableGameCrashOverlay" then
             CaptureScreenForGameCrashOverlay() --Runs a bit unique here
         else
@@ -75,8 +69,6 @@ if CLIENT then
         end
 
     end )
-
-    net.Receive( "SendScreen", DefaultOverlay )
 
     net.Receive( "EndScreen", function() --All this should do is close the screen, everything else should be done for us
         CloseOverlay()
@@ -88,17 +80,28 @@ if CLIENT then
         end
     end
 
-    function UnMuteThem()
+    function UnMuteEverything()
         for k, v in pairs( player.GetAll() ) do
             if v:Alive() then
                 v:SetMuted( false )
             end
         end
+        PreventSounds = false
+    end
+
+    function MuteEverything()
+        MuteThem()
+        PreventSounds = true
+    end
+
+    function CloseOverlay()
+        if Screen and ispanel( Screen ) then Screen:Remove() end
+        UnMuteEverything()
     end
 
     function DefaultOverlay()
         if IsValid( Screen ) and ispanel( Screen ) then return end
-        timer.Simple( 2, function() LocalPlayer():SetDSP( 14, false ) end )
+        timer.Simple( 2, function() LocalPlayer():SetDSP( 14, false ) end ) --We're assuming the player is emitting the ice-over sound
 
         Screen = vgui.Create( "DFrame" )
         Screen:SetSize( ScrW(), ScrH() )
@@ -123,46 +126,7 @@ if CLIENT then
         end
     end
 
-    function CloseOverlay()
-        if Screen and ispanel( Screen ) then Screen:Remove() end
-        UnMuteThem()
-    end
-
-    function CompletedMinigame()
-        net.Start( "SendScreenInteractiveCallback" ) --To be called only when the player SUCCESSFULLY completes the minigame
-            net.WriteInt( savedInt, 9 )
-        net.SendToServer()
-    end
-
-    function IceInteractiveOverlay()
-        if IsValid( Screen ) and ispanel( Screen ) then return end
-        timer.Simple( 2, function() LocalPlayer():SetDSP( 14, false ) end )
-
-        Screen = vgui.Create( "DFrame" )
-        Screen:SetSize( ScrW(), ScrH() )
-        Screen:SetPos( 0, 0 )
-        Screen:SetTitle( "" )
-        Screen:SetVisible( true )
-        Screen:SetDraggable( false )
-        Screen:ShowCloseButton( false )
-        Screen:MakePopup()
-        Screen.Paint = function()
-        end
-
-        local IceOverlay = Material( "ui/frosted.png" ) --Smooth 1
-        overlayPanel = vgui.Create( "DPanel", Screen )
-        overlayPanel:SetSize( Screen:GetWide(), Screen:GetTall() )
-        overlayPanel:SetPos( 0, 0 )
-        overlayPanel.Paint = function()
-            overlayPanel.alphaCounter = overlayPanel.alphaCounter or 0
-            if overlayPanel.alphaCounter <= 254 then overlayPanel.alphaCounter = overlayPanel.alphaCounter + 1 end
-            surface.SetDrawColor( 255, 255, 255, overlayPanel.alphaCounter )
-            surface.SetMaterial( IceOverlay )
-            surface.DrawTexturedRect( 0, 0, overlayPanel:GetWide(), overlayPanel:GetTall() )
-        end
-    end
-
-    function OSUpdateInteractiveOverlay()
+    function OSUpdateOverlay()
         Screen = vgui.Create( "DFrame" )
         Screen:SetSize( ScrW(), ScrH() )
         Screen:SetPos( 0, 0 )
@@ -172,7 +136,7 @@ if CLIENT then
         Screen:ShowCloseButton( false )
         Screen:MakePopup()
         
-        local UpdateImage, FooledYou = Material( "ui/windows10update.png" ), false
+        local UpdateImage = Material( "ui/windows10update.png" )
         overlayPanel = vgui.Create( "DPanel", Screen )
         overlayPanel:SetSize( Screen:GetWide(), Screen:GetTall() )
         overlayPanel:SetPos( 0, 0 )
@@ -180,21 +144,6 @@ if CLIENT then
             surface.SetDrawColor( 255, 255, 255 )
             surface.SetMaterial( UpdateImage )
             surface.DrawTexturedRect( 0, 0, overlayPanel:GetWide(), overlayPanel:GetTall() )
-        end
-
-        local function FooledYou()
-            local failedImage = Material( "" )
-            local failedPanel = vgui.Create( "DPanel", overlayPanel )
-            failedPanel:SetPos( 0, 0 )
-            failedPanel:SetSize( overlayPanel:GetWide(), overlayPanel:GetTall() )
-            failedPanel.Paint = function()
-                surface.SetDrawColor( 255, 255, 255 )
-                --surface.SetMaterial( failedImage )
-                --surface.DrawTexturedRect( 0, 0, failedPanel:GetWide(), failedPanel:GetTall() )
-                surface.SetDrawColor( ) --Need the windows 10 blue RGB
-                surface.DrawRect( 0, 0, failedPanel:GetWide(), failedPanel:GetTall() )
-                draw.DrawText( "Fooled you.", "Windows10Font", failedPanel:GetWide() / 2, failedPanel:GetTall() / 2, Color( 255, 255, 255 ), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER )
-            end
         end
 
         local buttonImage1 = Material( "" )
@@ -208,7 +157,10 @@ if CLIENT then
             surface.DrawTexturedRect( 0, 0, fakeButton1:GetWide(), fakeButton1:GetTall() )
         end
         fakeButton1.DoClick = function()
-            FooledYou()
+            
+        end
+        fakeButton1.Hover = function()
+
         end
 
         local buttonImage2 = Material( "" )
@@ -222,28 +174,53 @@ if CLIENT then
             surface.DrawTexturedRect( 0, 0, fakeButton2:GetWide(), fakeButton2:GetTall() )
         end
         fakeButton2.DoClick = function()
-            FooledYou()
+            
+        end
+        fakeButton2.Hover = function()
+
         end
 
         local buttonImage3 = Material( "" )
-        realButton = vgui.Create( "DButton", overlayPanel )
-        realButton:SetPos()
-        realButton:SetSize()
-        realButton:SetText( "" )
-        realButton.Paint = function()
+        fakebutton3 = vgui.Create( "DButton", overlayPanel )
+        fakebutton3:SetPos()
+        fakebutton3:SetSize()
+        fakebutton3:SetText( "" )
+        fakebutton3.Paint = function()
             surface.SetDrawColor( 255, 255, 255 )
             surface.SetMaterial( buttonImage3 )
-            surface.DrawTexturedRect( 0, 0, realButton:GetWide(), realButton:GetTall() )
+            surface.DrawTexturedRect( 0, 0, fakebutton3:GetWide(), fakebutton3:GetTall() )
         end
-        realButton.DoClick = function()
+        fakebutton3.DoClick = function()
+
+        end
+        fakeButton3.Hover = function()
 
         end
     end
 
-    function OSCrashInteractiveOverlay()
+    function OSCrashOverlay()
         if IsValid( Screen ) and ispanel( Screen ) then return end
-        MuteThem()
-        --Blue screen text-based minigame
+        MuteEverything()
+        
+        Screen = vgui.Create( "DFrame" )
+        Screen:SetSize( ScrW(), ScrH() )
+        Screen:SetPos( 0, 0 )
+        Screen:SetTitle( "" )
+        Screen:SetVisible( true )
+        Screen:SetDraggable( false )
+        Screen:ShowCloseButton( false )
+        Screen.Paint = function()
+        end
+        
+        local CrashImage = Material( "" )
+        overlayPanel = vgui.Create( "DPanel", Screen )
+        overlayPanel:SetSize( Screen:GetWide(), Screen:GetTall() )
+        overlayPanel:SetPos( 0, 0 )
+        overlayPanel.Paint = function()
+            surface.SetDrawColor( 255, 255, 255 )
+            surface.SetMaterial( CrashImage )
+            surface.DrawTexturedRect( 0, 0, overlayPanel:GetWide(), overlayPanel:GetTall() )
+        end
     end
 
     function CaptureScreenForGameCrashOverlay()
@@ -251,9 +228,9 @@ if CLIENT then
         RequestedScreenshot = true
     end
 
-    function GameCrashInteractiveOverlay()
-        --if IsValid( Screen ) and ispanel( Screen ) then return end --Called in CaptureScreenForGameCrashOverlay function
-        MuteThem()
+    function GameCrashOverlay()
+        if IsValid( Screen ) and ispanel( Screen ) then return end --Called in CaptureScreenForGameCrashOverlay function
+        MuteEverything()
 
         Screen = vgui.Create( "DFrame" )
         Screen:SetSize( ScrW(), ScrH() )
@@ -275,7 +252,7 @@ if CLIENT then
 
         local CrashImage = Material( "" )
         crashPanel = vgui.Create( "DPanel", overlayPanel ) --Do we want to be using overlayPanel here? Or Screen? We need the background blur
-        crashPanel:SetSize()
+        crashPanel:SetSize( 400, 400 )
         crashPanel:Center()
         crashPanel.Paint = function()
             surface.SetDrawColor( 255, 255, 255 )
@@ -301,10 +278,14 @@ if CLIENT then
         tempPic:Write( data )
         tempPic:Close()
 
-        timer.Simple( 0, function()
+        timer.Simple( 0, function() --May need to adjust, 1 tick may not be enough time for the game to recognize the file
             if file.Exists( "materials/LoganTempPic.jpg", "GAME" ) then
-                GameCrashInteractiveOverlay()
+                GameCrashOverlay()
             end
         end )
+    end )
+
+    hook.Add( "EntityEmitSound", "PreventSounds", function( info )
+        if PreventSounds then return false end
     end )
 end

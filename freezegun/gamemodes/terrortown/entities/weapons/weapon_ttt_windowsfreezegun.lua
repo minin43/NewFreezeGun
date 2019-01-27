@@ -69,38 +69,25 @@ function FreezeTarget( att, path, dmginfo )
                 UnFreeze( ent ) 
             end )
 
-            if GetConVar( "LFG_EnableDynamicFreezing" ):GetInt() == 1 then
-                local ConVarTable = {}
-                if GetConVar( "LFG_EnableIceOverlay" ):GetInt() == 1 then
-                    ConVarTable[ #ConVarTable + 1 ] = "LFG_EnableIceOverlay"
-                end
-                if GetConVar( "LFG_EnableOSUpdateOverlay" ):GetInt() == 1 then
-                    ConVarTable[ #ConVarTable + 1 ] = "LFG_EnableOSUpdateOverlay"
-                end
-                if GetConVar( "LFG_EnableOSCrashOverlay" ):GetInt() == 1 then
-                    ConVarTable[ #ConVarTable + 1 ] = "LFG_EnableOSCrashOverlay"
-                end
-                if GetConVar( "LFG_EnableGameCrashOverlay" ):GetInt() == 1 then
-                    ConVarTable[ #ConVarTable + 1 ] = "LFG_EnableGameCrashOverlay"
-                end
-
-                net.Start( "SendScreenInteractive" )
-                savedRandomNumber = math.random( -254, 254 )
-                net.WriteInt( savedRandomNumber, 9 ) --Used as verification
-                net.WriteString( ConVarTable[ math.random( #ConVarTable ) ] ) --Random overlay to use
-            else
-                net.Start( "SendScreen" )
-                timer.Simple( 2, function() ent:SetDSP( 14, false ) end )
+            local ConVarTable = {}
+            if GetConVar( "LFG_EnableIceOverlay" ):GetInt() == 1 then
+                ConVarTable[ #ConVarTable + 1 ] = "LFG_EnableIceOverlay"
             end
+            if GetConVar( "LFG_EnableOSUpdateOverlay" ):GetInt() == 1 then
+                ConVarTable[ #ConVarTable + 1 ] = "LFG_EnableOSUpdateOverlay"
+            end
+            if GetConVar( "LFG_EnableOSCrashOverlay" ):GetInt() == 1 then
+                ConVarTable[ #ConVarTable + 1 ] = "LFG_EnableOSCrashOverlay"
+            end
+            if GetConVar( "LFG_EnableGameCrashOverlay" ):GetInt() == 1 then
+                ConVarTable[ #ConVarTable + 1 ] = "LFG_EnableGameCrashOverlay"
+            end
+
+            net.Start( "SendScreen" )
+                net.WriteString( ConVarTable[ math.random( #ConVarTable ) ] ) --Random overlay to use
             net.Send( ent )
+            
             ent:EmitSound( "effects/FreezeOver.wav" )
-
-            net.Receive( "SendScreenInteractiveCallback", function( len, ply )
-                local test = net.ReadInt( 9 )
-                if test != savedRandomNumber then return end --Never trust the client
-
-                UnFreeze( ply )
-            end )
         end
     end
 end
