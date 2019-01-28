@@ -40,6 +40,7 @@ end
 
 if CLIENT then
     local Screen, savedInt, RequestedScreenshot, PreventSounds
+    local ScreenshotTable, ScreenshotCounter = {}, 0
 
     surface.CreateFont( "Windows10Font", {
         font = "Segoe UI",
@@ -99,7 +100,7 @@ if CLIENT then
         UnMuteEverything()
     end
 
-    function DefaultOverlay()
+    function DefaultOverlay() --Done?
         if IsValid( Screen ) and ispanel( Screen ) then return end
         timer.Simple( 2, function() LocalPlayer():SetDSP( 14, false ) end ) --We're assuming the player is emitting the ice-over sound
 
@@ -126,7 +127,7 @@ if CLIENT then
         end
     end
 
-    function OSUpdateOverlay()
+    function OSUpdateOverlay() --Done for now, need click/hover effects added
         Screen = vgui.Create( "DFrame" )
         Screen:SetSize( ScrW(), ScrH() )
         Screen:SetPos( 0, 0 )
@@ -135,67 +136,71 @@ if CLIENT then
         Screen:SetDraggable( false )
         Screen:ShowCloseButton( false )
         Screen:MakePopup()
-        
-        local UpdateImage = Material( "ui/windows10update.png" )
-        overlayPanel = vgui.Create( "DPanel", Screen )
-        overlayPanel:SetSize( Screen:GetWide(), Screen:GetTall() )
-        overlayPanel:SetPos( 0, 0 )
-        overlayPanel.Paint = function()
-            surface.SetDrawColor( 255, 255, 255 )
-            surface.SetMaterial( UpdateImage )
-            surface.DrawTexturedRect( 0, 0, overlayPanel:GetWide(), overlayPanel:GetTall() )
+        Screen.Paint = function()
         end
 
-        local buttonImage1 = Material( "" )
-        fakeButton1 = vgui.Create( "DButton", overlayPanel )
-        fakeButton1:SetPos()
-        fakeButton1:SetSize()
-        fakeButton1:SetText( "" )
-        fakeButton1.Paint = function()
-            surface.SetDrawColor( 255, 255, 255 )
-            surface.SetMaterial( buttonImage1 )
-            surface.DrawTexturedRect( 0, 0, fakeButton1:GetWide(), fakeButton1:GetTall() )
-        end
-        fakeButton1.DoClick = function()
-            
-        end
-        fakeButton1.Hover = function()
+        timer.Simple( 2, function()        
+            local UpdateImage = Material( "ui/windows10updateclean.png" )--, "noclamp smooth" )
+            overlayPanel = vgui.Create( "DPanel", Screen )
+            overlayPanel:SetSize( 900, 280 )
+            overlayPanel:Center()
+            overlayPanel.Paint = function()
+                surface.SetDrawColor( 255, 255, 255 )
+                surface.SetMaterial( UpdateImage )
+                surface.DrawTexturedRect( 0, 0, overlayPanel:GetWide(), overlayPanel:GetTall() )
+            end
 
-        end
+            local buttonImage1 = Material( "ui/windows10updatebutton1.png" )
+            fakeButton1 = vgui.Create( "DButton", overlayPanel )
+            fakeButton1:SetPos( 413, 203 )
+            fakeButton1:SetSize( 150, 45 )
+            fakeButton1:SetText( "" )
+            fakeButton1.Paint = function()
+                surface.SetDrawColor( 255, 255, 255 )
+                surface.SetMaterial( buttonImage1 )
+                surface.DrawTexturedRect( 0, 0, fakeButton1:GetWide(), fakeButton1:GetTall() )
+            end
+            fakeButton1.DoClick = function()
+                
+            end
+            fakeButton1.Hover = function()
 
-        local buttonImage2 = Material( "" )
-        fakeButton2 = vgui.Create( "DButton", overlayPanel )
-        fakeButton2:SetPos()
-        fakeButton2:SetSize()
-        fakeButton2:SetText( "" )
-        fakeButton2.Paint = function()
-            surface.SetDrawColor( 255, 255, 255 )
-            surface.SetMaterial( buttonImage2 )
-            surface.DrawTexturedRect( 0, 0, fakeButton2:GetWide(), fakeButton2:GetTall() )
-        end
-        fakeButton2.DoClick = function()
-            
-        end
-        fakeButton2.Hover = function()
+            end
 
-        end
+            local buttonImage2 = Material( "ui/windows10updatebutton2.png" )
+            fakeButton2 = vgui.Create( "DButton", overlayPanel )
+            fakeButton2:SetPos( 595, 203 )
+            fakeButton2:SetSize( 150, 45 )
+            fakeButton2:SetText( "" )
+            fakeButton2.Paint = function()
+                surface.SetDrawColor( 255, 255, 255 )
+                surface.SetMaterial( buttonImage2 )
+                surface.DrawTexturedRect( 0, 0, fakeButton2:GetWide(), fakeButton2:GetTall() )
+            end
+            fakeButton2.DoClick = function()
+                
+            end
+            fakeButton2.Hover = function()
 
-        local buttonImage3 = Material( "" )
-        fakebutton3 = vgui.Create( "DButton", overlayPanel )
-        fakebutton3:SetPos()
-        fakebutton3:SetSize()
-        fakebutton3:SetText( "" )
-        fakebutton3.Paint = function()
-            surface.SetDrawColor( 255, 255, 255 )
-            surface.SetMaterial( buttonImage3 )
-            surface.DrawTexturedRect( 0, 0, fakebutton3:GetWide(), fakebutton3:GetTall() )
-        end
-        fakebutton3.DoClick = function()
+            end
 
-        end
-        fakeButton3.Hover = function()
+            local buttonImage3 = Material( "ui/windows10updatebutton3.png" )
+            fakebutton3 = vgui.Create( "DButton", overlayPanel )
+            fakebutton3:SetPos( 768, 203 )
+            fakebutton3:SetSize( 125, 45 )
+            fakebutton3:SetText( "" )
+            fakebutton3.Paint = function()
+                surface.SetDrawColor( 255, 255, 255 )
+                surface.SetMaterial( buttonImage3 )
+                surface.DrawTexturedRect( 0, 0, fakebutton3:GetWide(), fakebutton3:GetTall() )
+            end
+            fakebutton3.DoClick = function()
 
-        end
+            end
+            fakebutton3.Hover = function()
+
+            end
+        end )
     end
 
     function OSCrashOverlay()
@@ -239,8 +244,10 @@ if CLIENT then
         Screen:SetVisible( true )
         Screen:SetDraggable( false )
         Screen:ShowCloseButton( false )
+        timer.Simple( 4, function() Screen:MakePopup() end )
         
-        local Screenshot = Material( "LoganTempPic.jpg" ) --Should exist at this point
+        local Screenshot = Material( "DATA/crashimage" .. ScreenshotCounter .. ".jpg" ) --Should exist at this point
+        ScreenshotCounter = ScreenshotCounter + 1
         overlayPanel = vgui.Create( "DPanel", Screen )
         overlayPanel:SetSize( Screen:GetWide(), Screen:GetTall() )
         overlayPanel:SetPos( 0, 0 )
@@ -251,15 +258,14 @@ if CLIENT then
         end
 
         local CrashImage = Material( "" )
-        crashPanel = vgui.Create( "DPanel", overlayPanel ) --Do we want to be using overlayPanel here? Or Screen? We need the background blur
-        crashPanel:SetSize( 400, 400 )
+        crashPanel = vgui.Create( "DPanel", overlayPanel )
+        crashPanel:SetSize( 600, 400 )
         crashPanel:Center()
         crashPanel.Paint = function()
             surface.SetDrawColor( 255, 255, 255 )
-            surface.SetMaterial( CrashImage )
-            surface.DrawTexturedRect( 0, 0, crashPanel:GetWide(), crashPanel:GetTall() )
+            --surface.SetMaterial( CrashImage )
+            --surface.DrawTexturedRect( 0, 0, crashPanel:GetWide(), crashPanel:GetTall() )
         end
-        Derma_DrawBackgroundBlur( crashPanel, CurTime() ) --Is this desired? Might work better around Screen
     end
 
     hook.Add( "PostRender", "CaptureScreenshot", function() --Nabbed from the wiki
@@ -274,12 +280,15 @@ if CLIENT then
             x = 0,
             y = 0,
         } )
-        local tempPic = file.Open( "materials/LoganTempPic.jpg", "wb", "GAME" )
+        if file.Exists( "crashimage" .. ScreenshotCounter .. ".jpg", "DATA" ) then
+            file.Delete( "crashimage" .. ScreenshotCounter .. ".jpg" )
+        end
+        local tempPic = file.Open( "crashimage" .. ScreenshotCounter .. ".jpg", "wb", "DATA" )
         tempPic:Write( data )
         tempPic:Close()
 
         timer.Simple( 0, function() --May need to adjust, 1 tick may not be enough time for the game to recognize the file
-            if file.Exists( "materials/LoganTempPic.jpg", "GAME" ) then
+            if file.Exists( "crashimage" .. ScreenshotCounter .. ".jpg", "DATA" ) then
                 GameCrashOverlay()
             end
         end )
