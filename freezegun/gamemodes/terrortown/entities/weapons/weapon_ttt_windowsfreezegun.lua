@@ -4,7 +4,7 @@ AddCSLuaFile()
 SWEP.HoldType              = "pistol"
 
 if CLIENT then
-   SWEP.PrintName          = "Logan's Freeze Gun"
+   SWEP.PrintName          = "The Human Icer"
    SWEP.Slot               = 6
 
    SWEP.ViewModelFOV       = 54
@@ -84,7 +84,7 @@ function FreezeTarget( att, path, dmginfo )
             end
 
             net.Start( "SendScreen" )
-                net.WriteString( ConVarTable[ math.random( #ConVarTable ) ] ) --Random overlay to use
+                net.WriteString( ConVarTable[ math.random( #ConVarTable ) ] or "" ) --Random overlay to use
             net.Send( ent )
             
             ent:EmitSound( "effects/FreezeOver.wav" )

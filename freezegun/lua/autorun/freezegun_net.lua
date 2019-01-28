@@ -4,11 +4,12 @@ if SERVER then
     util.AddNetworkString( "SendScreen" )
     util.AddNetworkString( "EndScreen" )
 
-    CreateConVar( "LFG_EnableIceOverlay", 1, { FCVAR_ARCHIVE }, "If set to 1, enables the ice-over overlay" )
+    CreateConVar( "LFG_EnableIceOverlay", 1, { FCVAR_ARCHIVE }, "If set to 1, enables the ice-over overlay - this is the default overlay if all others are disabled" )
     CreateConVar( "LFG_EnableOSUpdateOverlay", 1, { FCVAR_ARCHIVE }, "If set to 1, enables the OS update overlay" )
     CreateConVar( "LFG_EnableOSCrashOverlay", 1, { FCVAR_ARCHIVE }, "If set to 1, enables the OS crash overlay" )
     CreateConVar( "LFG_EnableGameCrashOverlay", 1, { FCVAR_ARCHIVE }, "If set to 1, enables the game crash overlay" )
-    CreateConVar( "LFG_FreezeGunTime", 6, { FCVAR_ARCHIVE }, "How long the frozen player remains unable to move" )
+    CreateConVar( "LFG_FreezeGunTime", 6, { FCVAR_ARCHIVE }, "How long the frozen player remains frozen, keep above 2 seconds" )
+    CreateConVar( "LFG_DamageScaling", 40, { FCVAR_ARCHIVE }, "What % of damage players should take while frozen - defaults to 60% reduced: 40%")
 
     hook.Add( "DoPlayerDeath", "KilledWhileFrozen", function( vic )
         if vic:IsFlagSet( FL_FROZEN ) then
@@ -20,7 +21,7 @@ if SERVER then
             net.Start( "EndScreen" )
             net.Send( vic )
 
-            local data = EffectData()
+            local data = EffectData() --Not my original effect data, small edits were made to SetOrigin
             data:SetOrigin( vic:GetPos() + Vector( 0, 0, 40 ) )
             local scale = 4 + math.Rand( -0.25, 1.25 )
             local phys = vic:GetPhysicsObject()
@@ -36,13 +37,28 @@ if SERVER then
         end
     end )
 
+    hook.Add( "EntityTakeDamage", "FrozenDamage", function( vic, dmginfo )
+        local att = dmginfo:GetAttacker()
+        local toScale = math.Clamp( GetConVar( "LFG_DamageScaling" ):GetInt(), 1, 100 )
+
+        if vic and vic:IsPlayer() and vic:IsFlagSet( FL_FROZEN ) and !dmginfo:IsFallDamage() then --Frozen players take full fall damage
+            dmginfo:ScaleDamage( toScale )
+        end
+    
+    end )
+
+    hook.Add( "Initialize", "CheckConVars", function()
+        if GetConVar( "LFG_FreezeGunTime" ):GetInt() < 3 then
+            GetConVar( "LFG_FreezeGunTime" ):SetInt( 3 )
+        end
+    end )
 end
 
 if CLIENT then
     local Screen, savedInt, RequestedScreenshot, PreventSounds
     local ScreenshotTable, ScreenshotCounter = {}, 0
 
-    surface.CreateFont( "Windows10Font", {
+    surface.CreateFont( "Windows10Font", { --Remains unused
         font = "Segoe UI",
         extended = true, --dunno
         size = 13, --default
@@ -100,7 +116,7 @@ if CLIENT then
         UnMuteEverything()
     end
 
-    function DefaultOverlay() --Done?
+    function DefaultOverlay() --Done, needs testing
         if IsValid( Screen ) and ispanel( Screen ) then return end
         timer.Simple( 2, function() LocalPlayer():SetDSP( 14, false ) end ) --We're assuming the player is emitting the ice-over sound
 
@@ -120,14 +136,14 @@ if CLIENT then
         overlayPanel:SetPos( 0, 0 )
         overlayPanel.Paint = function()
             overlayPanel.alphaCounter = overlayPanel.alphaCounter or 0
-            if overlayPanel.alphaCounter <= 254 then overlayPanel.alphaCounter = overlayPanel.alphaCounter + 0.5 end
+            if overlayPanel.alphaCounter <= 200 then overlayPanel.alphaCounter = overlayPanel.alphaCounter + 0.5 end
             surface.SetDrawColor( 255, 255, 255, overlayPanel.alphaCounter )
             surface.SetMaterial( IceOverlay )
             surface.DrawTexturedRect( 0, 0, overlayPanel:GetWide(), overlayPanel:GetTall() )
         end
     end
 
-    function OSUpdateOverlay() --Done for now, need click/hover effects added
+    function OSUpdateOverlay() --Done, need click/hover effects added and testing
         Screen = vgui.Create( "DFrame" )
         Screen:SetSize( ScrW(), ScrH() )
         Screen:SetPos( 0, 0 )
@@ -203,7 +219,7 @@ if CLIENT then
         end )
     end
 
-    function OSCrashOverlay()
+    function OSCrashOverlay() --Done, needs testing
         if IsValid( Screen ) and ispanel( Screen ) then return end
         MuteEverything()
         
@@ -217,15 +233,25 @@ if CLIENT then
         Screen.Paint = function()
         end
         
-        local CrashImage = Material( "" )
         overlayPanel = vgui.Create( "DPanel", Screen )
         overlayPanel:SetSize( Screen:GetWide(), Screen:GetTall() )
         overlayPanel:SetPos( 0, 0 )
         overlayPanel.Paint = function()
-            surface.SetDrawColor( 255, 255, 255 )
-            surface.SetMaterial( CrashImage )
-            surface.DrawTexturedRect( 0, 0, overlayPanel:GetWide(), overlayPanel:GetTall() )
+            surface.SetDrawColor( 0, 0, 0 )
+            surface.DrawRect( 0, 0, overlayPanel:GetWide(), overlayPanel:GetTall() )
         end
+
+        local CrashImage = Material( "ui/windows10crash.png" )
+        timer.Simple( 2, function()
+            crashScreen = vgui.Create( "DPanel", overlayPanel )
+            crashScreen:SetPos( 0, 0 )
+            crashScreen:SetSize( overlayPanel:GetWide(), overlayPanel:GetTall() )
+            crashScreen.Paint = function()
+                surface.SetDrawColor( 255, 255, 255 )
+                surface.SetMaterial( CrashImage )
+                surface.DrawTexturedRect( 0, 0, overlayPanel:GetWide(), overlayPanel:GetTall() )
+            end
+        end )
     end
 
     function CaptureScreenForGameCrashOverlay()
@@ -233,7 +259,7 @@ if CLIENT then
         RequestedScreenshot = true
     end
 
-    function GameCrashOverlay()
+    function GameCrashOverlay() --Done, need W10 application crash image
         if IsValid( Screen ) and ispanel( Screen ) then return end --Called in CaptureScreenForGameCrashOverlay function
         MuteEverything()
 
