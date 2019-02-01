@@ -321,6 +321,6 @@ if CLIENT then
     end )
 
     hook.Add( "Think", "PreventAllSounds", function() --This shit is hella unoptimized, but I'm offered no other solution
-        if PreventSounds then return LocalPlayer():ConCommand("stopsound") end
+        if PreventSounds then LocalPlayer():ConCommand("stopsound") end
     end )
 end
