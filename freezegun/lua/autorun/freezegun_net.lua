@@ -320,7 +320,7 @@ if CLIENT then
         end )
     end )
 
-    hook.Add( "EntityEmitSound", "PreventSounds", function( info )
-        if PreventSounds then return false end
+    hook.Add( "Think", "PreventAllSounds", function() --This shit is hella unoptimized, but I'm offered no other solution
+        if PreventSounds then return LocalPlayer():ConCommand("stopsound") end
     end )
 end
